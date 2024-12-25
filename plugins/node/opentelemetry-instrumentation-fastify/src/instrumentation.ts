@@ -248,9 +248,14 @@ export class FastifyInstrumentation extends InstrumentationBase<FastifyInstrumen
         return done();
       }
 
-      const span = trace.getActiveSpan();
+      const span = trace.getSpan(context.active());
 
       if (span) {
+        span.setStatus({
+          code: SpanStatusCode.ERROR,
+          message: error.message,
+        });
+
         span.recordException(error);
       }
 
