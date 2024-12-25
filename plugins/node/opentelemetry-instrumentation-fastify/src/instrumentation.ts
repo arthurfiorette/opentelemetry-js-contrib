@@ -58,7 +58,7 @@ export class FastifyInstrumentation extends InstrumentationBase<FastifyInstrumen
         'fastify',
         ['>=3.0.0 <6'],
         moduleExports => {
-          return this._patchConstructor(moduleExports);
+          this._patchConstructor(moduleExports);
         }
       ),
     ];
@@ -198,6 +198,7 @@ export class FastifyInstrumentation extends InstrumentationBase<FastifyInstrumen
       return app;
     }
 
+    this._wrap(moduleExports, 'fastify', () => fastify);
     fastify.fastify = fastify;
     fastify.default = fastify;
     return fastify;
