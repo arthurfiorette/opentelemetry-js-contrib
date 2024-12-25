@@ -244,21 +244,17 @@ export class FastifyInstrumentation extends InstrumentationBase<FastifyInstrumen
       error: Error,
       done: HookHandlerDoneFunction
     ) {
-      if (!instrumentation.isEnabled()) {
+      if (instrumentation.isEnabled()) {
         return done();
       }
 
-      const span = trace.getSpan(context.active());
+      const span = trace.getActiveSpan();
 
-      if (!span) {
-        return done();
+      if (span) {
+        span.recordException(error);
       }
 
-      span.setAttributes({
-        [AttributeNames.ERROR_NAME]: error.name,
-        [AttributeNames.ERROR_MESSAGE]: error.message,
-        [AttributeNames.ERROR_STACK]: error.stack,
-      });
+      return done();
     };
   }
 
