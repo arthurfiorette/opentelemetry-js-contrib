@@ -19,6 +19,9 @@ export enum AttributeNames {
   FASTIFY_TYPE = 'fastify.type',
   HOOK_NAME = 'hook.name',
   PLUGIN_NAME = 'plugin.name',
+  ERROR_NAME = 'error.name',
+  ERROR_MESSAGE = 'error.message',
+  ERROR_STACK = 'error.stack',
 }
 
 export enum FastifyTypes {

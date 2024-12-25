@@ -183,25 +183,24 @@ export class FastifyInstrumentation extends InstrumentationBase<FastifyInstrumen
     };
   }
 
-  private _patchConstructor(moduleExports: {
-    fastify: () => FastifyInstance;
-  }): () => FastifyInstance {
+  private _patchConstructor(moduleExports: { fastify: () => FastifyInstance }) {
     const instrumentation = this;
 
-    function fastify(this: FastifyInstance, ...args: any) {
-      const app: FastifyInstance = moduleExports.fastify.apply(this, args);
+    const original = moduleExports.fastify;
+
+    moduleExports.fastify = function wrappedFastify(
+      this: FastifyInstance,
+      ...args: any
+    ) {
+      const app: FastifyInstance = original.apply(this, args);
       app.addHook('onRequest', instrumentation._hookOnRequest());
       app.addHook('preHandler', instrumentation._hookPreHandler());
+      app.addHook('onError', instrumentation._hookOnError());
 
       instrumentation._wrap(app, 'addHook', instrumentation._wrapAddHook());
 
       return app;
-    }
-
-    this._wrap(moduleExports, 'fastify', () => fastify);
-    fastify.fastify = fastify;
-    fastify.default = fastify;
-    return fastify;
+    };
   }
 
   private _patchSend() {
@@ -230,6 +229,36 @@ export class FastifyInstrumentation extends InstrumentationBase<FastifyInstrumen
           }
         );
       };
+    };
+  }
+
+  // https://github.com/autotelic/fastify-opentelemetry/blob/658d56770360fb561c158c3168da342d845b821a/index.js#L141
+  private _hookOnError() {
+    const instrumentation = this;
+    this._diag.debug('Patching fastify onError function');
+
+    return function onError(
+      this: any,
+      _req: FastifyRequest,
+      _rep: FastifyReply,
+      error: Error,
+      done: HookHandlerDoneFunction
+    ) {
+      if (!instrumentation.isEnabled()) {
+        return done();
+      }
+
+      const span = trace.getSpan(context.active());
+
+      if (!span) {
+        return done();
+      }
+
+      span.setAttributes({
+        [AttributeNames.ERROR_NAME]: error.name,
+        [AttributeNames.ERROR_MESSAGE]: error.message,
+        [AttributeNames.ERROR_STACK]: error.stack,
+      });
     };
   }
 
